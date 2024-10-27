@@ -1,0 +1,20 @@
+<div class="container">
+
+  <h1>Hola</h1>
+  <h2>{{wellcome}}</h2>
+
+  <ul>
+    <li *ngFor="let task of tasks()">{{task}}</li>
+  </ul>
+  <hr>
+  <p>hola soy {{ name() }}</p>
+  <h2>Signals</h2>
+  <input type="text" [value]="name()" (change)="changeHandler($event)">
+<ul>
+  <p>total: {{tasks().length}}</p>
+  <li *ngFor="let task of tasks(); index as i">{{i}} {{task}}</li>
+</ul>
+<hr>
+<input type="color" [formControl]="colorCtrl">
+<p>color: {{ colorCtrl.value }}</p>
+</div>
