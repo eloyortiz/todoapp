@@ -28,12 +28,27 @@ export class HomeComponent {
     return tasks;
   });
 
+  taskCounts = computed(() => {
+    const tasks = this.tasks();
+    return tasks.reduce(
+      (acc, task) => {
+        if (task.completed) {
+          acc.completed++;
+        } else {
+          acc.pending++;
+        }
+        return acc;
+      },
+      { pending: 0, completed: 0 }
+    );
+  });
+
   pendingCount = computed(() => {
-    return this.tasks().filter(task => !task.completed).length;
+    return this.taskCounts().pending;
   });
 
   completedCount = computed(() => {
-    return this.tasks().filter(task => task.completed).length;
+    return this.taskCounts().completed;
   });
 
   hasCompletedTasks = computed(() => {
@@ -68,7 +83,15 @@ export class HomeComponent {
   loadTasksFromLocalStorage() {
     const tasks = localStorage.getItem('tasks');
     if (tasks) {
-      this.tasks.set(JSON.parse(tasks));
+      try {
+        const parsedTasks = JSON.parse(tasks);
+        if (Array.isArray(parsedTasks)) {
+          this.tasks.set(parsedTasks);
+        }
+      } catch (error) {
+        console.error('Failed to parse tasks from localStorage:', error);
+        localStorage.removeItem('tasks');
+      }
     }
   }
 
@@ -82,7 +105,7 @@ export class HomeComponent {
 
   addTask(title: string): void {
     const newTask = {
-      id: Date.now(),
+      id: Date.now() + Math.random(),
       title,
       completed: false,
     };
