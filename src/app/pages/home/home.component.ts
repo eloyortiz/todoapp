@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, effect, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Task } from '../../models/task.model';
 
@@ -11,26 +11,53 @@ import { Task } from '../../models/task.model';
   styleUrl: './home.component.css',
 })
 export class HomeComponent {
-  tasks = signal<Task[]>([
-    {
-      id: Date.now(),
-      title: 'Instalar Angular CLI',
-      completed: false,
-    },
-    {
-      id: Date.now(),
-      title: 'Crear proyecto',
-      completed: false,
-    },
-  ]);
+  tasks = signal<Task[]>([]);
 
-  filter = signal('all');
+  filter = signal<'all' | 'pending' | 'completed'>('all');
+  
   taskByFilter = computed(() => {
-
     const filter = this.filter();
     const tasks = this.tasks();
 
-  })
+    if (filter === 'pending') {
+      return tasks.filter(task => !task.completed);
+    }
+    if (filter === 'completed') {
+      return tasks.filter(task => task.completed);
+    }
+    return tasks;
+  });
+
+  taskCounts = computed(() => {
+    const tasks = this.tasks();
+    return tasks.reduce(
+      (acc, task) => {
+        if (task.completed) {
+          acc.completed++;
+        } else {
+          acc.pending++;
+        }
+        return acc;
+      },
+      { pending: 0, completed: 0 }
+    );
+  });
+
+  pendingCount = computed(() => {
+    return this.taskCounts().pending;
+  });
+
+  completedCount = computed(() => {
+    return this.taskCounts().completed;
+  });
+
+  hasCompletedTasks = computed(() => {
+    return this.completedCount() > 0;
+  });
+
+  allCompleted = computed(() => {
+    return this.tasks().length > 0 && this.pendingCount() === 0;
+  });
 
   newTaskCtrl = new FormControl('', {
     nonNullable: true,
@@ -40,6 +67,33 @@ export class HomeComponent {
       Validators.minLength(3),
     ],
   });
+
+  constructor() {
+    this.loadTasksFromLocalStorage();
+    this.trackTasks();
+  }
+
+  trackTasks() {
+    effect(() => {
+      const tasks = this.tasks();
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    });
+  }
+
+  loadTasksFromLocalStorage() {
+    const tasks = localStorage.getItem('tasks');
+    if (tasks) {
+      try {
+        const parsedTasks = JSON.parse(tasks);
+        if (Array.isArray(parsedTasks)) {
+          this.tasks.set(parsedTasks);
+        }
+      } catch (error) {
+        console.error('Failed to parse tasks from localStorage:', error);
+        localStorage.removeItem('tasks');
+      }
+    }
+  }
 
   changeHandler() {
     if (this.newTaskCtrl.valid) {
@@ -51,23 +105,23 @@ export class HomeComponent {
 
   addTask(title: string): void {
     const newTask = {
-      id: Date.now(),
+      id: Date.now() + Math.random(),
       title,
       completed: false,
     };
     this.tasks.update((tasks) => [...tasks, newTask]);
   }
 
-  deleteTask(index: number) {
+  deleteTask(id: number) {
     this.tasks.update((tasks) =>
-      tasks.filter((task, position) => position !== index)
+      tasks.filter((task) => task.id !== id)
     );
   }
 
-  updateTask(index: number) {
+  updateTask(id: number) {
     this.tasks.update((tasks) => {
-      return tasks.map((task, position) => {
-        if (position === index) {
+      return tasks.map((task) => {
+        if (task.id === id) {
           return {
             ...task,
             completed: !task.completed,
@@ -78,10 +132,10 @@ export class HomeComponent {
     });
   }
 
-  updateTaskEditingMode(index: number) {
+  updateTaskEditingMode(id: number) {
     this.tasks.update((tasks) => {
-      return tasks.map((task, position) => {
-        if (position === index) {
+      return tasks.map((task) => {
+        if (task.id === id) {
           return {
             ...task,
             editing: true,
@@ -95,11 +149,11 @@ export class HomeComponent {
     });
   }
 
-  updateTaskText(index: number, event: Event) {
+  updateTaskText(id: number, event: Event) {
     const input = event.target as HTMLInputElement;
     this.tasks.update((prevState) => {
-      return prevState.map((task, position) => {
-        if (position === index) {
+      return prevState.map((task) => {
+        if (task.id === id) {
           return {
             ...task,
             title: input.value,
@@ -111,8 +165,22 @@ export class HomeComponent {
     });
   }
 
-  changeFilter(filter: string) {
+  changeFilter(filter: 'all' | 'pending' | 'completed') {
+    this.filter.set(filter);
+  }
 
+  toggleAll() {
+    const allCompleted = this.allCompleted();
+    this.tasks.update((tasks) =>
+      tasks.map((task) => ({
+        ...task,
+        completed: !allCompleted,
+      }))
+    );
+  }
+
+  clearCompleted() {
+    this.tasks.update((tasks) => tasks.filter((task) => !task.completed));
   }
 
 }
