@@ -22,6 +22,11 @@
     "tslib": "^2.3.0",
     "zone.js": "~0.16.0"
   },
+  "overrides": {
+    "flatted": "3.4.2",
+    "socket.io-parser": "4.2.6",
+    "undici": "7.24.5"
+  },
   "devDependencies": {
     "@angular-devkit/build-angular": "^21.2.1",
     "@angular/cli": "^21.2.1",
